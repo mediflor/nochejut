@@ -144,7 +144,18 @@
   $('skipBtn').onclick = () => openApp();
   window.addEventListener('appinstalled', () => store.set('nochejut_installed', '1'));
 
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+  // Actualizaciones automáticas: si hay una versión nueva, se instala sola y la pantalla se recarga una vez.
+  if ('serviceWorker' in navigator) {
+    const hadController = !!navigator.serviceWorker.controller;
+    let reloaded = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (hadController && !reloaded) { reloaded = true; location.reload(); }
+    });
+    navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(reg => {
+      reg.update();
+      document.addEventListener('visibilitychange', () => { if (!document.hidden) reg.update(); });
+    }).catch(() => {});
+  }
 
   if (!token) { $('loading').hidden = true; $('nolink').hidden = false; }
   else if (standalone) openApp();
