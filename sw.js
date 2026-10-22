@@ -1,6 +1,6 @@
 // Service worker mínimo: guarda la "cáscara" de la app para que abra rápido.
 // Los datos de fichaje siempre vienen en vivo del servidor (no se guardan acá).
-const CACHE = 'nochejut-v1';
+const CACHE = 'nochejut-v2';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 
 self.addEventListener('install', e => {
