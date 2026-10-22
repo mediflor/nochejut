@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>נוכחות – מדיפלור</title>
+<meta name="theme-color" content="#1f5fa8">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="נוכחות">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<style>
+  :root { --brand: #1f5fa8; --ink: #1c2430; --muted: #6b7684; --card: #fff; --green: #1f9d55; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--brand); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Arial, sans-serif; color: var(--ink); }
+  [hidden] { display: none !important; }
+  #app { position: fixed; inset: 0; padding-top: env(safe-area-inset-top); background: var(--brand); }
+  #app iframe { width: 100%; height: 100%; border: 0; display: block; background: #11161d; }
+  #loading { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #fff; gap: 14px; }
+  #loading img { width: 96px; height: 96px; border-radius: 22px; }
+  .screen { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; padding: 20px; padding-top: calc(20px + env(safe-area-inset-top)); }
+  .card { background: var(--card); border-radius: 18px; padding: 22px 18px; max-width: 420px; width: 100%; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,.2); }
+  .card img { width: 88px; height: 88px; border-radius: 20px; margin-bottom: 8px; }
+  h1 { font-size: 21px; margin: 4px 0 8px; }
+  p { margin: 6px 0; color: var(--muted); }
+  ol { text-align: right; padding-inline-start: 22px; margin: 12px 0; }
+  li { margin: 6px 0; }
+  .btn { display: block; width: 100%; border: 0; border-radius: 12px; padding: 14px; font: inherit; font-weight: 700; font-size: 17px; cursor: pointer; margin-top: 10px; }
+  .pri { background: var(--green); color: #fff; }
+  .sec { background: transparent; color: var(--brand); border: 1px solid var(--brand); }
+  .ico { display: inline-block; border: 1px solid #ccd; border-radius: 6px; padding: 0 6px; font-weight: 700; }
+</style>
+</head>
+<body>
+<div id="loading"><img src="icon-192.png" alt=""><div>טוען…</div></div>
+<div id="app" hidden></div>
+
+<div id="install" class="screen" hidden>
+  <div class="card">
+    <img src="icon-192.png" alt="">
+    <h1>התקנת אפליקציית הנוכחות</h1>
+    <p>פעם אחת בלבד – ואחר כך פותחים מהאייקון במסך הבית.</p>
+    <div id="android" hidden>
+      <button id="installBtn" class="btn pri">התקנה</button>
+      <ol id="androidManual" hidden>
+        <li>לחצו על <span class="ico">⋮</span> בפינת הדפדפן</li>
+        <li>בחרו <b>התקנת האפליקציה</b> או <b>הוספה למסך הבית</b></li>
+      </ol>
+    </div>
+    <ol id="ios" hidden>
+      <li>לחצו על כפתור השיתוף <span class="ico">⬆︎</span> בתחתית Safari</li>
+      <li>גללו ובחרו <b>הוספה למסך הבית</b></li>
+      <li>לחצו <b>הוסף</b> – והאייקון יופיע במסך</li>
+    </ol>
+    <button id="skipBtn" class="btn sec">המשך בלי להתקין</button>
+  </div>
+</div>
+
+<div id="nolink" class="screen" hidden>
+  <div class="card">
+    <img src="icon-192.png" alt="">
+    <h1>חסר קישור אישי</h1>
+    <p>יש לפתוח את הקישור האישי שקיבלת מהמנהל (בווטסאפ או במייל), ומשם להתקין.</p>
+  </div>
+</div>
+
+<script>
+  // כתובת מערכת הנוכחות (Google Apps Script)
+  const EXEC_URL = 'https://script.google.com/macros/s/AKfycbyVYP7oMaRcb6fBM_ZB0pxn5gGG1PZUilj_CWT2-N4NE2mJnaGt8lwo8ih94DtZVxDYDg/exec';
+  const $ = id => document.getElementById(id);
+
+  const store = {
+    get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  };
+
+  // הטוקן האישי מגיע בקישור (?k=...). נשמר במכשיר כדי שהאפליקציה תיפתח גם בלי הקישור.
+  const params = new URLSearchParams(location.search);
+  let token = (params.get('k') || '').trim();
+  if (/^[A-Za-z0-9]{20,64}$/.test(token)) store.set('nochejut_k', token);
+  else token = store.get('nochejut_k') || '';
+
+  const standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  let deferredPrompt = null;
+
+  function openApp() {
+    $('install').hidden = true;
+    const app = $('app');
+    if (!app.firstChild) {
+      const f = document.createElement('iframe');
+      f.src = EXEC_URL + '?k=' + encodeURIComponent(token);
+      f.allow = 'geolocation';
+      f.title = 'נוכחות';
+      f.onload = () => { $('loading').hidden = true; };
+      app.appendChild(f);
+    }
+    app.hidden = false;
+  }
+
+  function showInstall() {
+    $('loading').hidden = true;
+    $('install').hidden = false;
+    if (isIOS) { $('ios').hidden = false; }
+    else {
+      $('android').hidden = false;
+      if (!deferredPrompt) { $('installBtn').hidden = true; $('androidManual').hidden = false; }
+    }
+  }
+
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    deferredPrompt = e;
+    if (!$('install').hidden && !isIOS) { $('installBtn').hidden = false; $('androidManual').hidden = true; }
+  });
+
+  $('installBtn').onclick = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const choice = await deferredPrompt.userChoice;
+    deferredPrompt = null;
+    if (choice.outcome === 'accepted') { store.set('nochejut_installed', '1'); openApp(); }
+  };
+  $('skipBtn').onclick = () => openApp();
+  window.addEventListener('appinstalled', () => store.set('nochejut_installed', '1'));
+
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+
+  if (!token) { $('loading').hidden = true; $('nolink').hidden = false; }
+  else if (standalone) openApp();
+  else setTimeout(showInstall, 300);
+</script>
+</body>
+</html>
