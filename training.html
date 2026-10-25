@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>מרכז ההדרכה – פ.ד מדיפלור</title>
+<meta name="theme-color" content="#D7192D">
+<link rel="icon" href="favicon.png">
+<style>
+  :root { --brand:#D7192D; --ink:#1c2430; --muted:#6b7684; --line:#e6e8ec; --bg:#f6f7f9; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.6 system-ui,-apple-system,"Segoe UI",Arial,sans-serif; }
+  header { background:var(--brand); color:#fff; padding:28px 16px 34px; text-align:center; }
+  header svg { width:64px; height:64px; }
+  header .c { opacity:.9; font-size:14px; margin-top:6px; }
+  header h1 { margin:4px 0 6px; font-size:30px; }
+  header p { margin:0 auto; max-width:620px; opacity:.95; }
+  nav { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; padding:14px 16px; background:#fff; border-bottom:1px solid var(--line); position:sticky; top:0; z-index:2; }
+  nav a { text-decoration:none; color:var(--ink); border:1px solid var(--line); border-radius:20px; padding:6px 14px; font-size:14px; font-weight:600; }
+  nav a:hover { border-color:var(--brand); color:var(--brand); }
+  main { max-width:1060px; margin:0 auto; padding:24px 16px 60px; }
+  h2 { font-size:22px; margin:26px 0 10px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:18px; }
+  .card { background:#fff; border:1px solid var(--line); border-radius:16px; overflow:hidden; }
+  .card video { width:100%; display:block; background:#000; aspect-ratio:16/9; }
+  .card .b { padding:12px 16px 16px; }
+  .card h3 { margin:0 0 4px; font-size:17px; }
+  .card p { margin:0; color:var(--muted); font-size:14px; }
+  .who { display:inline-block; font-size:12px; font-weight:700; color:var(--brand); background:#fdecee; border-radius:12px; padding:1px 9px; margin-bottom:6px; }
+  .rule { background:#fdf2df; color:#6b4300; border-radius:12px; padding:12px 16px; margin-top:28px; }
+  .steps { background:#fff; border:1px solid var(--line); border-radius:16px; padding:16px 20px; }
+  .steps li { margin:6px 0; }
+  footer { text-align:center; color:var(--muted); font-size:13px; padding:20px; }
+</style>
+</head>
+<body>
+<header>
+  <svg viewBox="-60 -60 120 120" aria-hidden="true"><defs><path id="h" d="M0 0 C -6 -10 -22 -18 -22 -32 C -22 -42 -14 -48 -7 -48 C -3 -48 0 -45 0 -42 C 0 -45 3 -48 7 -48 C 14 -48 22 -42 22 -32 C 22 -18 6 -10 0 0 Z"/></defs><g fill="#fff"><use href="#h" transform="rotate(0) translate(0,-5)"/><use href="#h" transform="rotate(72) translate(0,-5)"/><use href="#h" transform="rotate(144) translate(0,-5)"/><use href="#h" transform="rotate(216) translate(0,-5)"/><use href="#h" transform="rotate(288) translate(0,-5)"/></g><circle r="9" fill="#D7192D"/></svg>
+  <div class="c">פ.ד מדיפלור בע"מ</div>
+  <h1>מרכז ההדרכה</h1>
+  <p>סרטונים קצרים לכל פעולה באפליקציית הצוות: שעון נוכחות ופורטל העבודה. כל עובד צופה בסרטונים של התפקיד שלו.</p>
+</header>
+<nav>
+  <a href="#start">מתחילים</a><a href="#amit">עוזר רופאה</a><a href="#racheli">מזכירה רפואית</a><a href="#all">לכל העובדים</a><a href="#flor">ד"ר פלור</a><a href="#leo">ניהול</a>
+</nav>
+<main>
+  <h2 id="start">מתחילים: אפליקציה אחת לכל העבודה</h2>
+  <div class="steps"><ol>
+    <li>פותחים את <b>הקישור האישי</b> שקיבלתם מלאו (במייל או בוואטסאפ). הוא אישי – לא מעבירים לאף אחד.</li>
+    <li><b>במחשב:</b> האפליקציה נפתחת על "פורטל הצוות". מומלץ לשמור בסימניות.</li>
+    <li><b>בטלפון:</b> פותחים את אותו קישור ולוחצים "התקנה" (באייפון: שיתוף ← "הוספה למסך הבית"). מעכשיו פותחים מהאייקון, גם בלי Claude ובלי חיבור למחשב.</li>
+    <li>למעלה יש מתג: <b>שעון נוכחות</b> – החתמת כניסה ויציאה, בקשת תיקון והיעדרות · <b>פורטל הצוות</b> – העבודה מול מטופלים, האזור האישי וצפי השעות.</li>
+    <li>האפליקציה מתעדכנת לבד. אין צורך להתקין מחדש.</li>
+  </ol></div>
+
+  <h2 id="amit">עוזר רופאה</h2>
+  <div class="grid">
+    <div class="card"><video controls preload="none" poster="training/1-amit-calls.jpg" src="training/1-amit-calls.mp4"></video><div class="b"><span class="who">עמית</span><h3>שיחות למטופלים</h3><p>מעוניין / לא ענה / לא מעוניין, הערות לרחלי, וחידוש מרשמים כמשימה פנימית. כדקה.</p></div></div>
+  </div>
+
+  <h2 id="racheli">מזכירה רפואית</h2>
+  <div class="grid">
+    <div class="card"><video controls preload="none" poster="training/2-racheli-booking.jpg" src="training/2-racheli-booking.mp4"></video><div class="b"><span class="who">רחלי</span><h3>קביעת תורים וסגירת מעגל</h3><p>נקבע תור, לא הושג, ביקר ברבעון, הגיע / לא הגיע ותורים קרובים. כדקה.</p></div></div>
+  </div>
+
+  <h2 id="all">לכל העובדים</h2>
+  <div class="grid">
+    <div class="card"><video controls preload="none" poster="training/3-weekly-plan.jpg" src="training/3-weekly-plan.mp4"></video><div class="b"><span class="who">כולם</span><h3>צפי שעות שבועי והודעות</h3><p>מה מגישים כל מוצאי שבת, ואיפה קוראים הודעות מההנהלה. פחות מדקה.</p></div></div>
+  </div>
+
+  <h2 id="flor">ד"ר פלור</h2>
+  <div class="grid">
+    <div class="card"><video controls preload="none" poster="training/4-flor-decisions.jpg" src="training/4-flor-decisions.mp4"></video><div class="b"><span class="who">ד"ר פלור</span><h3>החלטות רופאה</h3><p>לנסות שוב, הנחיה לעמית, העברה לקביעת תור או סגירה. כחצי דקה.</p></div></div>
+  </div>
+
+  <h2 id="leo">ניהול</h2>
+  <div class="grid">
+    <div class="card"><video controls preload="none" poster="training/5-leo-manage.jpg" src="training/5-leo-manage.mp4"></video><div class="b"><span class="who">לאו</span><h3>ניהול ונתונים</h3><p>ייבוא רשימות, כרטיסי נתונים, צפי הצוות והודעות לעובדים. פחות מדקה.</p></div></div>
+  </div>
+
+  <div class="rule"><b>כלל ברזל:</b> אין לכתוב במערכת שום מידע רפואי – לא אבחנה, לא סיבה רפואית ולא רקע. כל המידע הרפואי נשאר רק במערכות של מכבי. הסרטונים מציגים נתוני הדגמה בדויים.</div>
+</main>
+<footer>פ.ד מדיפלור בע"מ · שאלות ותקלות: לאו</footer>
+</body>
+</html>
