@@ -32,7 +32,7 @@ const PT_DEFAULT_ROLES = [['E001', ROLE.MANAGER], ['E007', ROLE.DOCTOR], ['E005'
 function portalDoGet_(e) {
   const token = (e && e.parameter && e.parameter.k) || '';
   const emp = empByToken_(token);
-  const t = HtmlService.createTemplateFromFile('Portal');
+  const t = HtmlService.createTemplateFromFile('PortalPage');
   t.token = emp ? token : '';
   t.invalid = !emp;
   return t.evaluate()
