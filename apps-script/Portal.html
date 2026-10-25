@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<style>
+  :root { --brand:#D7192D; --brand-soft:#fdecee; --ink:#1c2430; --muted:#6b7684; --line:#e6e8ec; --bg:#f6f7f9; --card:#fff;
+          --ok:#1f8a4c; --ok-soft:#e5f4ea; --warn:#b26a00; --warn-soft:#fdf2df; --info:#2563a8; --info-soft:#e7f0fb; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.5 system-ui,-apple-system,"Segoe UI",Arial,sans-serif; }
+  header { background:var(--brand); color:#fff; padding:12px 20px; display:flex; align-items:center; gap:12px; position:sticky; top:0; z-index:5; }
+  header svg { width:32px; height:32px; flex:none; }
+  header .t { font-weight:700; font-size:17px; }
+  header .who { margin-inline-start:auto; font-size:14px; opacity:.9; }
+  nav { display:flex; gap:4px; padding:0 16px; background:#fff; border-bottom:1px solid var(--line); overflow-x:auto; position:sticky; top:56px; z-index:4; }
+  nav button { border:0; background:none; padding:13px 14px; font:inherit; color:var(--muted); cursor:pointer; border-bottom:3px solid transparent; white-space:nowrap; }
+  nav button.on { color:var(--brand); border-color:var(--brand); font-weight:700; }
+  .badge { display:inline-block; min-width:22px; padding:0 7px; margin-inline-start:6px; border-radius:11px; background:var(--brand); color:#fff; font-size:12px; font-weight:700; text-align:center; }
+  .badge.z { background:#c9cdd3; }
+  main { max-width:1180px; margin:0 auto; padding:20px 16px 60px; }
+  h2 { font-size:19px; margin:0 0 4px; }
+  .lead { color:var(--muted); margin:0 0 16px; }
+  .rule { background:var(--warn-soft); color:#6b4300; border-radius:10px; padding:9px 14px; font-size:14px; margin-bottom:16px; }
+  .empty { background:#fff; border:1px dashed var(--line); border-radius:14px; padding:40px; text-align:center; color:var(--muted); }
+  table { width:100%; border-collapse:separate; border-spacing:0; background:#fff; border:1px solid var(--line); border-radius:14px; overflow:hidden; }
+  th { text-align:start; font-size:13px; color:var(--muted); font-weight:600; background:#fafbfc; padding:10px 12px; border-bottom:1px solid var(--line); }
+  td { padding:11px 12px; border-bottom:1px solid var(--line); vertical-align:middle; }
+  tr:last-child td { border-bottom:0; }
+  .name { font-weight:700; }
+  .sub { color:var(--muted); font-size:13px; }
+  .phone { direction:ltr; unicode-bidi:embed; color:var(--info); text-decoration:none; font-weight:600; white-space:nowrap; }
+  .chip { display:inline-block; padding:2px 9px; border-radius:20px; font-size:12.5px; font-weight:600; background:#eef0f3; color:#3d4652; white-space:nowrap; }
+  .chip.new { background:var(--ok-soft); color:var(--ok); }
+  .chip.rep { background:var(--warn-soft); color:var(--warn); }
+  .chip.st { background:var(--info-soft); color:var(--info); }
+  .acts { display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end; }
+  .btn { border:1px solid var(--line); background:#fff; border-radius:9px; padding:7px 12px; font:inherit; font-size:14px; cursor:pointer; white-space:nowrap; }
+  .btn:hover { border-color:#c4c9d0; }
+  .btn.pri { background:var(--brand); color:#fff; border-color:var(--brand); font-weight:700; }
+  .btn.ok { background:var(--ok); color:#fff; border-color:var(--ok); font-weight:700; }
+  .btn.ghost { color:var(--muted); }
+  .btn:disabled { opacity:.5; cursor:default; }
+  .instr { margin-top:4px; font-size:13px; color:#6b4300; background:var(--warn-soft); border-radius:7px; padding:3px 8px; display:inline-block; }
+  .note { font-size:13px; color:#3d4652; }
+  .cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(170px,1fr)); gap:12px; margin-bottom:20px; }
+  .card { background:#fff; border:1px solid var(--line); border-radius:14px; padding:14px 16px; }
+  .card .n { font-size:26px; font-weight:800; }
+  .card .l { color:var(--muted); font-size:13px; }
+  .panel { background:#fff; border:1px solid var(--line); border-radius:14px; padding:16px; margin-bottom:20px; }
+  label { display:block; font-size:13px; color:var(--muted); margin:10px 0 4px; }
+  input, select, textarea { width:100%; font:inherit; border:1px solid #cfd4da; border-radius:9px; padding:9px 11px; background:#fff; color:var(--ink); }
+  textarea { min-height:90px; resize:vertical; }
+  .row2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .toolbar { display:flex; gap:10px; align-items:center; margin-bottom:12px; flex-wrap:wrap; }
+  .toolbar input { max-width:280px; }
+  #modal { position:fixed; inset:0; background:rgba(20,24,30,.45); display:none; align-items:center; justify-content:center; z-index:20; padding:16px; }
+  #modal.on { display:flex; }
+  #modal .box { background:#fff; border-radius:16px; padding:20px; width:100%; max-width:440px; box-shadow:0 20px 50px rgba(0,0,0,.25); }
+  #modal h3 { margin:0 0 4px; font-size:18px; }
+  #modal .foot { display:flex; gap:8px; justify-content:flex-start; margin-top:16px; }
+  #toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#1c2430; color:#fff; padding:10px 18px; border-radius:10px; display:none; z-index:30; }
+  #toast.err { background:var(--brand); }
+  .center { min-height:70vh; display:flex; align-items:center; justify-content:center; text-align:center; color:var(--muted); }
+  @media (max-width:760px) {
+    thead { display:none; }
+    table, tbody, tr, td { display:block; width:100%; }
+    tr { border-bottom:1px solid var(--line); padding:8px 0; }
+    td { border:0; padding:4px 12px; }
+    .acts { justify-content:flex-start; }
+    .row2 { grid-template-columns:1fr; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <svg viewBox="-60 -60 120 120" aria-hidden="true"><defs><path id="h" d="M0 0 C -6 -10 -22 -18 -22 -32 C -22 -42 -14 -48 -7 -48 C -3 -48 0 -45 0 -42 C 0 -45 3 -48 7 -48 C 14 -48 22 -42 22 -32 C 22 -18 6 -10 0 0 Z"></path></defs><g fill="#fff"><use href="#h" transform="rotate(0) translate(0,-5)"></use><use href="#h" transform="rotate(72) translate(0,-5)"></use><use href="#h" transform="rotate(144) translate(0,-5)"></use><use href="#h" transform="rotate(216) translate(0,-5)"></use><use href="#h" transform="rotate(288) translate(0,-5)"></use></g><circle r="9" fill="#D7192D"></circle></svg>
+  <div class="t">פורטל הצוות · מדיפלור</div>
+  <div class="who" id="who"></div>
+</header>
+<nav id="nav"></nav>
+<main id="main"><div class="center">טוען…</div></main>
+<div id="modal"><div class="box" id="mbox"></div></div>
+<div id="toast"></div>
+
+<script>
+const TOKEN = <?= JSON.stringify(token) ?>;
+const INVALID = <?= JSON.stringify(invalid) ?>;
+let ME = null, VIEW = null, ROWS = [], COUNTS = {}, BUSY = false;
+
+const TABS = [
+  { id:'calls',    label:'שיחות',          role:'מתקשר',       count:'calls' },
+  { id:'book',     label:'קביעת תורים',     role:'קובעת תורים', count:'book' },
+  { id:'followup', label:'סגירת מעגל',      role:'קובעת תורים', count:'followup' },
+  { id:'upcoming', label:'תורים קרובים',    role:'קובעת תורים', count:'upcoming' },
+  { id:'doctor',   label:'החלטות רופאה',    role:'רופאה',       count:'doctor' },
+  { id:'all',      label:'כל הפניות',       role:'מנהל' },
+  { id:'manage',   label:'ניהול ונתונים',   role:'מנהל' }
+];
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const dmy = s => s && /^\d{4}-\d{2}-\d{2}/.test(s) ? s.slice(8,10)+'/'+s.slice(5,7)+'/'+s.slice(0,4) : (s || '');
+
+function call(op, payload) {
+  return new Promise((res, rej) => google.script.run.withSuccessHandler(res).withFailureHandler(e => rej(e)).portalApi(TOKEN, op, payload || {}));
+}
+function toast(msg, err) {
+  const t = $('#toast'); t.textContent = msg; t.className = err ? 'err' : ''; t.style.display = 'block';
+  clearTimeout(t._h); t._h = setTimeout(() => t.style.display = 'none', err ? 5000 : 2500);
+}
+function canSee(tab) { return ME.roles.indexOf('מנהל') >= 0 || ME.roles.indexOf(tab.role) >= 0; }
+
+function renderNav() {
+  $('#nav').innerHTML = TABS.filter(canSee).map(t => {
+    const n = t.count ? (COUNTS[t.count] || 0) : null;
+    const b = n === null ? '' : '<span class="badge' + (n ? '' : ' z') + '">' + n + '</span>';
+    return '<button data-v="' + t.id + '" class="' + (t.id === VIEW ? 'on' : '') + '">' + t.label + b + '</button>';
+  }).join('');
+  document.querySelectorAll('#nav button').forEach(b => b.onclick = () => go(b.dataset.v));
+}
+
+async function go(v) {
+  VIEW = v; renderNav();
+  try { localStorage.setItem('portal_view', v); } catch (e) {}
+  if (v === 'manage') return renderManage();
+  $('#main').innerHTML = '<div class="center">טוען…</div>';
+  await reload();
+}
+
+async function reload(silent) {
+  if (!VIEW || VIEW === 'manage') return;
+  try {
+    const r = await call('list', { view: VIEW });
+    ROWS = r.rows; COUNTS = r.counts; renderNav(); render();
+  } catch (e) { if (!silent) $('#main').innerHTML = '<div class="empty">' + esc(e.message) + '</div>'; }
+}
+
+const RULE = '<div class="rule">אין לכתוב במערכת שום מידע רפואי: לא אבחנה, לא סיבה רפואית ולא רקע. רק פרטים תפעוליים.</div>';
+function visitChip(p) { return p.visited ? '<span class="chip rep">ביקר ברבעון</span>' : '<span class="chip new">חדש ברבעון</span>'; }
+function phone(p) { return '<a class="phone" href="tel:' + esc(p.phone) + '">' + esc(p.phone) + '</a>'; }
+function who(p) {
+  return '<div class="name">' + esc(p.name) + '</div><div class="sub">' + esc(p.id) + ' · ' + esc(p.type) + '</div>' +
+    (p.instr ? '<div class="instr">הנחיית רופאה: ' + esc(p.instr) + '</div>' : '');
+}
+
+function render() {
+  const head = {
+    calls:    ['שיחות להיום', 'מטופלים להזמנה. מתחילים מהמטופלים החדשים ברבעון. אחרי כל שיחה מסמנים תוצאה.'],
+    book:     ['קביעת תורים', 'מטופלים שהסכימו להגיע. מתקשרים, קובעים תור ביומן של ד"ר פלור במכבי ומסמנים כאן.'],
+    followup: ['סגירת מעגל', 'תורים שמועדם עבר. מסמנים אם המטופל הגיע.'],
+    upcoming: ['תורים קרובים', 'כל התורים שנקבעו ועוד לא הגיע מועדם.'],
+    doctor:   ['החלטות רופאה', 'מטופלים שלא היו מעוניינים, לא הושגו או לא הגיעו. מחליטים איך להמשיך.'],
+    all:      ['כל הפניות', 'כל הפניות במערכת, מהחדשה לישנה.']
+  }[VIEW];
+  let h = '<h2>' + head[0] + '</h2><p class="lead">' + head[1] + '</p>';
+  if (VIEW === 'calls' || VIEW === 'doctor' || VIEW === 'book') h += RULE;
+  if (VIEW === 'all') h += '<div class="toolbar"><input id="q" placeholder="חיפוש לפי שם, טלפון או מזהה"></div>';
+  if (!ROWS.length) { $('#main').innerHTML = h + '<div class="empty">אין כרגע פניות ברשימה הזו 🌸</div>'; return; }
+  h += '<table><thead><tr>' + cols().map(c => '<th>' + c + '</th>').join('') + '</tr></thead><tbody id="tb">' + ROWS.map(row).join('') + '</tbody></table>';
+  $('#main').innerHTML = h;
+  bindRows();
+  if (VIEW === 'all') $('#q').oninput = e => {
+    const q = e.target.value.trim();
+    document.querySelectorAll('#tb tr').forEach(tr => tr.style.display = !q || tr.textContent.indexOf(q) >= 0 ? '' : 'none');
+  };
+}
+
+function cols() {
+  return {
+    calls: ['מטופל', 'טלפון', 'ניסיונות', 'רבעון', ''],
+    book: ['מטופל', 'טלפון', 'הערת עמית', 'ניסיונות', ''],
+    followup: ['מטופל', 'טלפון', 'תור', ''],
+    upcoming: ['מטופל', 'טלפון', 'תור', 'נקבע ע"י'],
+    doctor: ['מטופל', 'טלפון', 'מה קרה', 'הסבר', ''],
+    all: ['מטופל', 'טלפון', 'סטטוס', 'תור', 'עודכן']
+  }[VIEW];
+}
+
+function row(p) {
+  const id = esc(p.id);
+  if (VIEW === 'calls') {
+    const acts = p.type === 'חידוש מרשם'
+      ? '<button class="btn ok" data-a="internal" data-id="' + id + '">בוצע</button>'
+      : '<button class="btn ok" data-a="interested" data-id="' + id + '">מעוניין</button>' +
+        '<button class="btn" data-a="noanswer" data-id="' + id + '">לא ענה</button>' +
+        '<button class="btn" data-a="notint" data-id="' + id + '">לא מעוניין</button>';
+    return '<tr><td>' + who(p) + '</td><td>' + (p.type === 'חידוש מרשם' ? '<span class="chip">משימה פנימית</span>' : phone(p)) + '</td>' +
+      '<td>' + p.calls + (p.lastCall ? '<div class="sub">אחרונה ' + esc(dmy(p.lastCall)) + '</div>' : '') + '</td>' +
+      '<td>' + visitChip(p) + '</td><td><div class="acts">' + acts + '</div></td></tr>';
+  }
+  if (VIEW === 'book') {
+    return '<tr><td>' + who(p) + '</td><td>' + phone(p) + '</td><td class="note">' + esc(p.note || '—') + '</td>' +
+      '<td>' + p.bookTries + '</td><td><div class="acts">' +
+      '<button class="btn ok" data-a="booked" data-id="' + id + '">נקבע תור</button>' +
+      '<button class="btn" data-a="notreached" data-id="' + id + '">לא הושג</button>' +
+      '<button class="btn ghost" data-a="declined" data-id="' + id + '">ויתר</button>' +
+      '<button class="btn ghost" data-a="visited" data-id="' + id + '">' + (p.visited ? 'בטל "ביקר ברבעון"' : 'ביקר ברבעון') + '</button>' +
+      '</div></td></tr>';
+  }
+  if (VIEW === 'followup') {
+    return '<tr><td>' + who(p) + '</td><td>' + phone(p) + '</td><td>' + esc(dmy(p.apptDate)) + ' ' + esc(p.apptTime) + '</td>' +
+      '<td><div class="acts"><button class="btn ok" data-a="arrived" data-id="' + id + '">הגיע</button>' +
+      '<button class="btn" data-a="noshow" data-id="' + id + '">לא הגיע</button></div></td></tr>';
+  }
+  if (VIEW === 'upcoming') {
+    return '<tr><td>' + who(p) + '</td><td>' + phone(p) + '</td><td>' + esc(dmy(p.apptDate)) + ' ' + esc(p.apptTime) + '</td><td class="sub">' + esc(p.updBy) + '</td></tr>';
+  }
+  if (VIEW === 'doctor') {
+    const what = p.arrival === 'לא הגיע' ? 'לא הגיע לתור' : (p.callRes === 'לא מעוניין' ? 'לא מעוניין' :
+      (p.callRes === 'לא ענה' ? 'לא ענה ' + p.calls + ' פעמים' : (p.bookTries ? 'לא הושג לקביעת תור' : (p.callRes || '—'))));
+    return '<tr><td>' + who(p) + '</td><td>' + phone(p) + '</td><td><span class="chip st">' + esc(what) + '</span></td>' +
+      '<td class="note">' + esc([p.note, p.bookNote].filter(Boolean).join(' · ') || '—') + '</td><td><div class="acts">' +
+      '<button class="btn" data-a="retry" data-id="' + id + '">לנסות שוב</button>' +
+      '<button class="btn" data-a="instruct" data-id="' + id + '">הנחיה לעמית</button>' +
+      '<button class="btn ok" data-a="tobook" data-id="' + id + '">לקביעת תור</button>' +
+      '<button class="btn ghost" data-a="close" data-id="' + id + '">סגירה</button></div></td></tr>';
+  }
+  return '<tr><td>' + who(p) + '</td><td>' + phone(p) + '</td><td><span class="chip st">' + esc(p.status) + '</span></td>' +
+    '<td>' + (p.apptDate ? esc(dmy(p.apptDate)) + ' ' + esc(p.apptTime) : '—') + (p.arrival ? '<div class="sub">' + esc(p.arrival) + '</div>' : '') + '</td>' +
+    '<td class="sub">' + esc(dmy(p.updated)) + ' ' + esc((p.updated || '').slice(11)) + '<br>' + esc(p.updBy) + '</td></tr>';
+}
+
+function bindRows() {
+  document.querySelectorAll('[data-a]').forEach(b => b.onclick = () => act(b.dataset.a, b.dataset.id));
+}
+
+function find(id) { return ROWS.filter(r => r.id === id)[0]; }
+
+function act(a, id) {
+  const p = find(id); if (!p) return;
+  const simple = {
+    interested: ['callResult', { id, result:'interested' }, 'הועבר לרחלי לקביעת תור'],
+    noanswer:   ['callResult', { id, result:'no_answer' }, 'נשמר. יחזור לרשימה ביום העבודה הבא'],
+    internal:   ['callResult', { id, result:'done_internal' }, 'סומן כבוצע'],
+    notreached: ['bookResult', { id, result:'not_reached' }, 'נשמר. יחזור ביום העבודה הבא'],
+    arrived:    ['arrival', { id, arrived:true }, 'סומן: הגיע'],
+    noshow:     ['arrival', { id, arrived:false }, 'הועבר לד"ר פלור'],
+    visited:    ['visited', { id, value: !p.visited }, 'עודכן'],
+    tobook:     ['doctorDecision', { id, decision:'book' }, 'הועבר לרחלי']
+  }[a];
+  if (simple) {
+    if (a === 'interested') return modal('מעוניין לקבוע תור', p, [{ k:'note', l:'הערה לרחלי (לא חובה) – למשל שעות נוחות', t:'textarea' }],
+      v => send('callResult', { id, result:'interested', note:v.note }, 'הועבר לרחלי לקביעת תור'));
+    return send(simple[0], simple[1], simple[2]);
+  }
+  if (a === 'notint') return modal('לא מעוניין', p, [{ k:'note', l:'הסבר קצר (חובה) – ללא מידע רפואי', t:'textarea', req:true }],
+    v => send('callResult', { id, result:'not_interested', note:v.note }, 'הועבר לד"ר פלור'));
+  if (a === 'booked') return modal('נקבע תור', p, [
+      { k:'date', l:'תאריך התור', t:'date', req:true }, { k:'time', l:'שעה', t:'time', req:true },
+      { k:'note', l:'הערה (לא חובה)', t:'text' }],
+    v => send('bookResult', { id, result:'booked', date:v.date, time:v.time, note:v.note }, 'התור נשמר'));
+  if (a === 'declined') return modal('המטופל ויתר על התור', p, [{ k:'note', l:'הסבר קצר (חובה) – ללא מידע רפואי', t:'textarea', req:true }],
+    v => send('bookResult', { id, result:'declined', note:v.note }, 'הועבר לד"ר פלור'));
+  if (a === 'retry') return modal('לנסות שוב בהמשך', p, [
+      { k:'days', l:'בעוד כמה ימים לחזור למטופל?', t:'select', o:[['7','שבוע'],['14','שבועיים'],['30','חודש'],['90','3 חודשים']] },
+      { k:'note', l:'הנחיה לעמית (לא חובה)', t:'text' }],
+    v => send('doctorDecision', { id, decision:'retry', days:v.days, note:v.note }, 'יחזור לעמית במועד שנבחר'));
+  if (a === 'instruct') return modal('הנחיה לעמית', p, [{ k:'note', l:'ההנחיה (תופיע לעמית ליד שם המטופל)', t:'textarea', req:true }],
+    v => send('doctorDecision', { id, decision:'instruct', note:v.note }, 'הועבר לעמית עם ההנחיה'));
+  if (a === 'close') return modal('סגירת הפנייה', p, [{ k:'note', l:'הערה (לא חובה)', t:'text' }],
+    v => send('doctorDecision', { id, decision:'close', note:v.note }, 'הפנייה נסגרה'));
+}
+
+function modal(title, p, fields, onOk) {
+  $('#mbox').innerHTML = '<h3>' + esc(title) + '</h3><div class="sub">' + esc(p.name) + ' · ' + esc(p.id) + '</div>' +
+    fields.map(f => '<label for="f_' + f.k + '">' + esc(f.l) + '</label>' + (
+      f.t === 'textarea' ? '<textarea id="f_' + f.k + '" maxlength="300"></textarea>' :
+      f.t === 'select' ? '<select id="f_' + f.k + '">' + f.o.map(o => '<option value="' + o[0] + '">' + o[1] + '</option>').join('') + '</select>' :
+      '<input id="f_' + f.k + '" type="' + f.t + '" maxlength="300">')).join('') +
+    '<div class="foot"><button class="btn pri" id="mok">שמירה</button><button class="btn" id="mcancel">ביטול</button></div>';
+  $('#modal').classList.add('on');
+  const first = $('#mbox').querySelector('input,textarea,select'); if (first) first.focus();
+  $('#mcancel').onclick = closeModal;
+  $('#mok').onclick = () => {
+    const v = {};
+    for (const f of fields) {
+      v[f.k] = $('#f_' + f.k).value.trim();
+      if (f.req && !v[f.k]) { toast('יש למלא: ' + f.l, true); return; }
+    }
+    closeModal(); onOk(v);
+  };
+}
+function closeModal() { $('#modal').classList.remove('on'); }
+$('#modal').onclick = e => { if (e.target.id === 'modal') closeModal(); };
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+async function send(op, payload, okMsg) {
+  if (BUSY) return; BUSY = true;
+  document.querySelectorAll('[data-a]').forEach(b => b.disabled = true);
+  try { await call(op, payload); toast(okMsg); await reload(); }
+  catch (e) { toast(e.message, true); await reload(true); }
+  finally { BUSY = false; }
+}
+
+async function renderManage() {
+  $('#main').innerHTML = '<div class="center">טוען נתונים…</div>';
+  let s;
+  try { s = await call('stats'); } catch (e) { $('#main').innerHTML = '<div class="empty">' + esc(e.message) + '</div>'; return; }
+  COUNTS = s.counts; renderNav();
+  const card = (n, l) => '<div class="card"><div class="n">' + n + '</div><div class="l">' + l + '</div></div>';
+  $('#main').innerHTML =
+    '<h2>ניהול ונתונים</h2><p class="lead">תמונת מצב של כל השרשרת, וייבוא רשימות חדשות.</p>' +
+    '<div class="cards">' + card(s.total, 'פניות במערכת') + card(s.counts.calls, 'ממתינות לשיחה') + card(s.counts.book, 'ממתינות לקביעת תור') +
+      card(s.counts.doctor, 'ממתינות לד"ר פלור') + card(s.booked, 'תורים שנקבעו') + card(s.newInQuarter, 'תורים למטופלים חדשים ברבעון') +
+      card(s.responseRate + '%', 'היענות בשיחות') + card(s.arrivalRate + '%', 'הגעה לתורים') + '</div>' +
+    '<div class="panel"><h2>ייבוא רשימה</h2><p class="lead">מדביקים שורה לכל מטופל: <b>שם, טלפון</b> (אפשר להעתיק שתי עמודות מאקסל). כל מטופל מקבל מזהה פנימי. מספר שכבר קיים ברשימה פעילה מדולג.</p>' +
+      '<div class="row2"><div><label for="imp_type">סוג פנייה</label><select id="imp_type">' + ME.types.map(t => '<option' + (t === 'ביקור' ? ' selected' : '') + '>' + t + '</option>').join('') + '</select></div>' +
+      '<div><label for="imp_list">שם הרשימה</label><input id="imp_list" placeholder="למשל: חיסוני שפעת – נובמבר"></div></div>' +
+      '<label for="imp_text">שם, טלפון – שורה לכל מטופל</label><textarea id="imp_text" style="min-height:160px" placeholder="ישראל ישראלי, 0501234567"></textarea>' +
+      '<div class="foot" style="margin-top:12px"><button class="btn pri" id="imp_go">ייבוא</button></div><div id="imp_res" class="sub" style="margin-top:8px"></div></div>';
+  $('#imp_go').onclick = async () => {
+    const text = $('#imp_text').value.trim(); if (!text) return toast('אין שורות לייבוא', true);
+    $('#imp_go').disabled = true;
+    try {
+      const r = await call('importList', { text, type: $('#imp_type').value, listName: $('#imp_list').value });
+      $('#imp_res').innerHTML = 'נוספו ' + r.added + ' מטופלים.' + (r.skipped.length ? '<br>דולגו: ' + r.skipped.map(esc).join(' · ') : '');
+      $('#imp_text').value = ''; toast('הרשימה נוספה');
+      const s2 = await call('stats'); COUNTS = s2.counts; renderNav();
+    } catch (e) { toast(e.message, true); }
+    finally { $('#imp_go').disabled = false; }
+  };
+}
+
+async function start() {
+  if (INVALID) { $('#main').innerHTML = '<div class="center">הקישור אינו תקף. יש לפתוח את הקישור האישי שקיבלת מהמנהל.</div>'; return; }
+  try { ME = await call('me'); } catch (e) { $('#main').innerHTML = '<div class="center">' + esc(e.message) + '</div>'; return; }
+  COUNTS = ME.counts;
+  $('#who').textContent = 'שלום, ' + ME.name;
+  const tabs = TABS.filter(canSee);
+  if (!tabs.length) { $('#main').innerHTML = '<div class="center">עדיין לא הוגדר לך תפקיד בפורטל. פנה/י ללאו.</div>'; return; }
+  let saved = null; try { saved = localStorage.getItem('portal_view'); } catch (e) {}
+  go(tabs.some(t => t.id === saved) ? saved : tabs[0].id);
+  setInterval(() => { if (!BUSY && !$('#modal').classList.contains('on') && VIEW !== 'manage') reload(true); }, 60000);
+  try { window.top.postMessage({ nochejut: 'ready' }, '*'); } catch (e) {}
+}
+start();
+</script>
+</body>
+</html>

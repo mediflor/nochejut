@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>פורטל הצוות – פ.ד מדיפלור</title>
+<meta name="theme-color" content="#D7192D">
+<link rel="icon" href="favicon.png">
+<style>
+  html, body { margin: 0; height: 100%; background: #f6f7f9; font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Arial, sans-serif; }
+  iframe { position: fixed; inset: 0; width: 100%; height: 100%; border: 0; background: #f6f7f9; }
+  .msg { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; padding: 20px; text-align: center; color: #6b7684; }
+  .msg div { background: #fff; border-radius: 16px; padding: 24px; max-width: 420px; box-shadow: 0 10px 30px rgba(0,0,0,.08); }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div id="nolink" class="msg" hidden><div><b>חסר קישור אישי</b><br>יש לפתוח את קישור הפורטל האישי שקיבלת מלאו.</div></div>
+<script>
+  // אותה מערכת כמו אפליקציית הנוכחות (Google Apps Script), במסך הפורטל
+  const EXEC_URL = 'https://script.google.com/macros/s/AKfycbyVYP7oMaRcb6fBM_ZB0pxn5gGG1PZUilj_CWT2-N4NE2mJnaGt8lwo8ih94DtZVxDYDg/exec';
+  const store = {
+    get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  };
+  let token = (new URLSearchParams(location.search).get('k') || '').trim();
+  if (/^[A-Za-z0-9]{20,64}$/.test(token)) store.set('nochejut_k', token);
+  else token = store.get('nochejut_k') || '';
+  if (!token) document.getElementById('nolink').hidden = false;
+  else {
+    const f = document.createElement('iframe');
+    f.src = EXEC_URL + '?p=portal&k=' + encodeURIComponent(token);
+    f.title = 'פורטל הצוות';
+    document.body.appendChild(f);
+  }
+</script>
+</body>
+</html>
