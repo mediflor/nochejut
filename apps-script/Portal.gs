@@ -101,7 +101,7 @@ function ptRows_() {
 function ptObj_(r, row) {
   return {
     row: row, id: String(r[PC.ID]), created: ptStr_(r[PC.CREATED]), name: String(r[PC.NAME] || ''),
-    phone: String(r[PC.PHONE] || ''), type: String(r[PC.TYPE] || ''), status: String(r[PC.STATUS] || ''),
+    phone: ptPhone_(r[PC.PHONE]), type: String(r[PC.TYPE] || ''), status: String(r[PC.STATUS] || ''),
     avail: ptDate_(r[PC.AVAIL]), calls: Number(r[PC.CALLS]) || 0, callRes: String(r[PC.CALLRES] || ''),
     note: String(r[PC.NOTE] || ''), lastCall: ptStr_(r[PC.LASTCALL]), bookTries: Number(r[PC.BOOKTRIES]) || 0,
     apptDate: ptDate_(r[PC.APPTDATE]), apptTime: ptTime_(r[PC.APPTTIME]), bookNote: String(r[PC.BOOKNOTE] || ''),
@@ -190,6 +190,10 @@ function ptSet_(p, emp, fields) {
   const range = sh.getRange(p.row, 1, 1, PT_HEAD.length);
   const r = range.getValues()[0];
   Object.keys(fields).forEach(function (k) { r[PC[k]] = fields[k]; });
+  // שמירה כטקסט: טלפון (אפס מוביל) ושעת תור
+  r[PC.PHONE] = "'" + ptPhone_(r[PC.PHONE]);
+  const tm = ptTime_(r[PC.APPTTIME]);
+  r[PC.APPTTIME] = tm ? "'" + tm : '';
   r[PC.UPDATED] = ptNow_();
   r[PC.UPDBY] = emp.name;
   range.setValues([r]);
@@ -388,6 +392,11 @@ function ptNextWorkday_() {
   const d = new Date();
   do { d.setDate(d.getDate() + 1); } while (Number(Utilities.formatDate(d, 'Asia/Jerusalem', 'u')) >= 5 && Number(Utilities.formatDate(d, 'Asia/Jerusalem', 'u')) <= 6);
   return ptFmt_(d);
+}
+function ptPhone_(v) {
+  let s = String(v == null ? '' : v).replace(/^'/, '').replace(/[^\d+]/g, '');
+  if (/^[1-9]\d{7,8}$/.test(s)) s = '0' + s;
+  return s;
 }
 function ptClean_(s) { return String(s || '').replace(/[<>]/g, '').trim().slice(0, 300); }
 function ptPub_(p) { const o = {}; Object.keys(p).forEach(function (k) { if (k !== 'row') o[k] = p[k]; }); return o; }
