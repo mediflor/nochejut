@@ -69,6 +69,10 @@
   .plan td { padding:8px 10px; }
   .plan input[type=time] { width:120px; }
   .links { display:flex; gap:10px; flex-wrap:wrap; }
+  .vgrid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:14px; }
+  .vcard { border:1px solid var(--line); border-radius:12px; overflow:hidden; background:#fff; }
+  .vcard video { width:100%; display:block; aspect-ratio:16/9; background:#000; }
+  .vcard .vt { padding:8px 12px; font-weight:700; }
   .links a { text-decoration:none; }
   .seg { display:inline-flex; border:1px solid var(--line); border-radius:10px; overflow:hidden; }
   .seg button { border:0; background:#fff; padding:7px 14px; font:inherit; cursor:pointer; }
@@ -376,9 +380,11 @@ async function renderMe() {
       '</tbody></table><div class="foot" style="margin-top:12px"><button class="btn pri" id="savePlan">הגשת הצפי</button></div></div>';
   }
 
+  const vids = myVideos();
+  h += '<div class="panel"><h2>סרטוני הדרכה</h2><p class="lead">הסרטונים של התפקיד שלך. כל אחד פחות מדקה.</p><div class="vgrid">' +
+    vids.map(v => '<div class="vcard"><video controls preload="none" poster="' + APP_BASE + 'training/' + v[0] + '.jpg" src="' + APP_BASE + 'training/' + v[0] + '.mp4"></video><div class="vt">' + v[1] + '</div></div>').join('') + '</div></div>';
   h += '<div class="panel"><h2>קישורים</h2><div class="links">' +
-    '<a class="btn" target="_blank" href="' + APP_BASE + '?k=' + encodeURIComponent(TOKEN) + '">אפליקציית הנוכחות</a>' +
-    '<a class="btn" target="_blank" href="' + APP_BASE + 'training.html">מרכז ההדרכה – סרטונים</a></div></div>';
+    '<a class="btn" target="_blank" href="' + APP_BASE + '?k=' + encodeURIComponent(TOKEN) + '&v=att">שעון הנוכחות</a></div></div>';
   $('#main').innerHTML = h;
 
   document.querySelectorAll('[data-read]').forEach(b => b.onclick = async () => {
@@ -392,6 +398,16 @@ async function renderMe() {
     try { await call('savePlan', { week: PLAN_WEEK, days }); toast('הצפי הוגש. תודה!'); renderMe(); }
     catch (e) { toast(e.message, true); sp.disabled = false; }
   };
+}
+function myVideos() {
+  const R = ME.roles, mgr = R.indexOf('מנהל') >= 0, has = r => mgr || R.indexOf(r) >= 0;
+  const v = [['0-attendance', 'שעון נוכחות']];
+  if (has('מתקשר')) v.push(['1-amit-calls', 'שיחות למטופלים']);
+  if (has('קובעת תורים')) v.push(['2-racheli-booking', 'קביעת תורים וסגירת מעגל']);
+  v.push(['3-weekly-plan', 'צפי שעות שבועי והודעות']);
+  if (has('רופאה')) v.push(['4-flor-decisions', 'החלטות רופאה']);
+  if (mgr) v.push(['5-leo-manage', 'ניהול ונתונים']);
+  return v;
 }
 function addDays(ymd, n) { const p = ymd.split('-').map(Number); const d = new Date(p[0], p[1]-1, p[2]+n, 12); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
 
