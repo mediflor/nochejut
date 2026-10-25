@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>נוכחות – פ.ד מדיפלור</title>
+<title>פ.ד מדיפלור – נוכחות ופורטל הצוות</title>
 <meta name="theme-color" content="#D7192D">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -17,8 +17,12 @@
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; background: var(--brand); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Arial, sans-serif; color: var(--ink); }
   [hidden] { display: none !important; }
-  #app { position: fixed; inset: 0; padding-top: env(safe-area-inset-top); background: var(--brand); }
-  #app iframe { width: 100%; height: 100%; border: 0; display: block; background: var(--brand); }
+  #app { position: fixed; inset: 0; padding-top: env(safe-area-inset-top); background: var(--brand); display: flex; flex-direction: column; }
+  #switch { flex: none; display: flex; gap: 6px; justify-content: center; padding: 6px 10px; background: var(--brand); }
+  #switch button { border: 0; border-radius: 20px; padding: 6px 16px; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; background: rgba(255,255,255,.18); color: #fff; }
+  #switch button.on { background: #fff; color: var(--brand); }
+  #frames { flex: 1; position: relative; }
+  #frames iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: block; background: #fff; }
   #loading { position: fixed; inset: 0; z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; color: #fff; background: var(--brand); transition: opacity .45s ease; }
   #loading .pop { width: 110px; height: 110px; transition: transform .45s cubic-bezier(.3,1.6,.6,1); }
   #loading svg { width: 110px; height: 110px; display: block; animation: spin 1.6s linear infinite; }
@@ -43,12 +47,12 @@
 </head>
 <body>
 <div id="loading"><div class="pop"><svg viewBox="-60 -60 120 120" aria-hidden="true"><defs><path id="h" d="M0 0 C -6 -10 -22 -18 -22 -32 C -22 -42 -14 -48 -7 -48 C -3 -48 0 -45 0 -42 C 0 -45 3 -48 7 -48 C 14 -48 22 -42 22 -32 C 22 -18 6 -10 0 0 Z"></path></defs><g fill="#fff"><use href="#h" transform="rotate(0) translate(0,-5)"></use><use href="#h" transform="rotate(72) translate(0,-5)"></use><use href="#h" transform="rotate(144) translate(0,-5)"></use><use href="#h" transform="rotate(216) translate(0,-5)"></use><use href="#h" transform="rotate(288) translate(0,-5)"></use></g><circle r="9" fill="#D7192D"></circle></svg></div><div class="t">טוען…</div></div>
-<div id="app" hidden></div>
+<div id="app" hidden><div id="switch"><button data-v="att">שעון נוכחות</button><button data-v="portal">פורטל הצוות</button></div><div id="frames"></div></div>
 
 <div id="install" class="screen" hidden>
   <div class="card">
     <img src="icon-192.png" alt="">
-    <h1>התקנת אפליקציית הנוכחות</h1>
+    <h1>התקנת אפליקציית מדיפלור</h1>
     <p>פעם אחת בלבד – ואחר כך פותחים מהאייקון במסך הבית.</p>
     <div id="android" hidden>
       <button id="installBtn" class="btn pri">התקנה</button>
@@ -102,20 +106,32 @@
   }
   window.addEventListener('message', e => { if (e.data && e.data.nochejut === 'ready') finishLoading(); });
 
+  // אפליקציה אחת: שעון נוכחות + פורטל הצוות. במחשב נפתח הפורטל, בטלפון – הנוכחות (אלא אם נבחר אחרת).
+  const isWide = window.matchMedia('(min-width: 900px)').matches && !/android|iphone|ipad|ipod/i.test(navigator.userAgent);
+  const frames = {};
+  function show(v) {
+    store.set('mediflor_view', v);
+    document.querySelectorAll('#switch button').forEach(b => b.classList.toggle('on', b.dataset.v === v));
+    if (!frames[v]) {
+      const f = document.createElement('iframe');
+      f.src = EXEC_URL + (v === 'portal' ? '?p=portal&k=' : '?k=') + encodeURIComponent(token);
+      if (v === 'att') f.allow = 'geolocation';
+      f.title = v === 'portal' ? 'פורטל הצוות' : 'נוכחות';
+      f.onload = () => { setTimeout(finishLoading, 12000); };
+      $('frames').appendChild(f);
+      frames[v] = f;
+    }
+    Object.keys(frames).forEach(k => frames[k].style.visibility = k === v ? 'visible' : 'hidden');
+  }
+  document.querySelectorAll('#switch button').forEach(b => b.onclick = () => show(b.dataset.v));
+
   function openApp() {
     $('install').hidden = true;
     $('loading').hidden = false;
     $('loading').classList.remove('done');
-    const app = $('app');
-    if (!app.firstChild) {
-      const f = document.createElement('iframe');
-      f.src = EXEC_URL + '?k=' + encodeURIComponent(token);
-      f.allow = 'geolocation';
-      f.title = 'נוכחות';
-      f.onload = () => { setTimeout(finishLoading, 12000); };
-      app.appendChild(f);
-    }
-    app.hidden = false;
+    $('app').hidden = false;
+    const want = params.get('v') || store.get('mediflor_view') || (isWide ? 'portal' : 'att');
+    show(want === 'portal' ? 'portal' : 'att');
   }
 
   function showInstall() {
@@ -158,7 +174,7 @@
   }
 
   if (!token) { $('loading').hidden = true; $('nolink').hidden = false; }
-  else if (standalone) openApp();
+  else if (standalone || isWide || params.get('v')) openApp();
   else setTimeout(showInstall, 300);
 </script>
 </body>

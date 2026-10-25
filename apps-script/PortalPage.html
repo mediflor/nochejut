@@ -61,6 +61,20 @@
   #toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#1c2430; color:#fff; padding:10px 18px; border-radius:10px; display:none; z-index:30; }
   #toast.err { background:var(--brand); }
   .center { min-height:70vh; display:flex; align-items:center; justify-content:center; text-align:center; color:var(--muted); }
+  .msg { background:#fff; border:1px solid var(--line); border-radius:12px; padding:12px 14px; margin-bottom:10px; }
+  .msg.unread { border-color:var(--brand); box-shadow:inset 3px 0 0 var(--brand); }
+  .msg .h { display:flex; gap:8px; align-items:center; justify-content:space-between; }
+  .msg .b { white-space:pre-wrap; margin-top:6px; }
+  .alert { background:var(--brand-soft); color:#8a0f1c; border-radius:10px; padding:10px 14px; margin-bottom:16px; font-weight:600; }
+  .plan td { padding:8px 10px; }
+  .plan input[type=time] { width:120px; }
+  .links { display:flex; gap:10px; flex-wrap:wrap; }
+  .links a { text-decoration:none; }
+  .seg { display:inline-flex; border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+  .seg button { border:0; background:#fff; padding:7px 14px; font:inherit; cursor:pointer; }
+  .seg button.on { background:var(--brand); color:#fff; font-weight:700; }
+  .ok-chip { background:var(--ok-soft); color:var(--ok); }
+  .no-chip { background:var(--brand-soft); color:#8a0f1c; }
   @media (max-width:760px) {
     thead { display:none; }
     table, tbody, tr, td { display:block; width:100%; }
@@ -85,9 +99,11 @@
 <script>
 const TOKEN = <?!= JSON.stringify(token) ?>;
 const INVALID = <?!= invalid ? 'true' : 'false' ?>;
-let ME = null, VIEW = null, ROWS = [], COUNTS = {}, BUSY = false;
+let ME = null, VIEW = null, ROWS = [], COUNTS = {}, BUSY = false, UNREAD = 0;
+const APP_BASE = 'https://mediflor.github.io/nochejut/';
 
 const TABS = [
+  { id:'me',       label:'האזור שלי',       role:'*',           count:'unread' },
   { id:'calls',    label:'שיחות',          role:'מתקשר',       count:'calls' },
   { id:'book',     label:'קביעת תורים',     role:'קובעת תורים', count:'book' },
   { id:'followup', label:'סגירת מעגל',      role:'קובעת תורים', count:'followup' },
@@ -108,11 +124,11 @@ function toast(msg, err) {
   const t = $('#toast'); t.textContent = msg; t.className = err ? 'err' : ''; t.style.display = 'block';
   clearTimeout(t._h); t._h = setTimeout(() => t.style.display = 'none', err ? 5000 : 2500);
 }
-function canSee(tab) { return ME.roles.indexOf('מנהל') >= 0 || ME.roles.indexOf(tab.role) >= 0; }
+function canSee(tab) { return tab.role === '*' || ME.roles.indexOf('מנהל') >= 0 || ME.roles.indexOf(tab.role) >= 0; }
 
 function renderNav() {
   $('#nav').innerHTML = TABS.filter(canSee).map(t => {
-    const n = t.count ? (COUNTS[t.count] || 0) : null;
+    const n = t.count ? (t.count === 'unread' ? UNREAD : (COUNTS[t.count] || 0)) : null;
     const b = n === null ? '' : '<span class="badge' + (n ? '' : ' z') + '">' + n + '</span>';
     return '<button data-v="' + t.id + '" class="' + (t.id === VIEW ? 'on' : '') + '">' + t.label + b + '</button>';
   }).join('');
@@ -123,12 +139,13 @@ async function go(v) {
   VIEW = v; renderNav();
   try { localStorage.setItem('portal_view', v); } catch (e) {}
   if (v === 'manage') return renderManage();
+  if (v === 'me') return renderMe();
   $('#main').innerHTML = '<div class="center">טוען…</div>';
   await reload();
 }
 
 async function reload(silent) {
-  if (!VIEW || VIEW === 'manage') return;
+  if (!VIEW || VIEW === 'manage' || VIEW === 'me') return;
   try {
     const r = await call('list', { view: VIEW });
     ROWS = r.rows; COUNTS = r.counts; renderNav(); render();
@@ -307,7 +324,9 @@ async function renderManage() {
       '<div class="row2"><div><label for="imp_type">סוג פנייה</label><select id="imp_type">' + ME.types.map(t => '<option' + (t === 'ביקור' ? ' selected' : '') + '>' + t + '</option>').join('') + '</select></div>' +
       '<div><label for="imp_list">שם הרשימה</label><input id="imp_list" placeholder="למשל: חיסוני שפעת – נובמבר"></div></div>' +
       '<label for="imp_text">שם, טלפון – שורה לכל מטופל</label><textarea id="imp_text" style="min-height:160px" placeholder="ישראל ישראלי, 0501234567"></textarea>' +
-      '<div class="foot" style="margin-top:12px"><button class="btn pri" id="imp_go">ייבוא</button></div><div id="imp_res" class="sub" style="margin-top:8px"></div></div>';
+      '<div class="foot" style="margin-top:12px"><button class="btn pri" id="imp_go">ייבוא</button></div><div id="imp_res" class="sub" style="margin-top:8px"></div></div>' +
+    '<div id="team"><div class="center" style="min-height:120px">טוען צוות…</div></div>';
+  renderTeam($('#team'));
   $('#imp_go').onclick = async () => {
     const text = $('#imp_text').value.trim(); if (!text) return toast('אין שורות לייבוא', true);
     $('#imp_go').disabled = true;
@@ -321,16 +340,106 @@ async function renderManage() {
   };
 }
 
+
+/* ====================== האזור שלי ====================== */
+const DAYS = ['ראשון','שני','שלישי','רביעי','חמישי','שישי'];
+let AREA = null, PLAN_WEEK = null;
+
+async function renderMe() {
+  $('#main').innerHTML = '<div class="center">טוען…</div>';
+  try { AREA = await call('myArea'); } catch (e) { $('#main').innerHTML = '<div class="empty">' + esc(e.message) + '</div>'; return; }
+  UNREAD = AREA.unread; renderNav();
+  if (!PLAN_WEEK) PLAN_WEEK = AREA.nextWeek;
+  const plan = PLAN_WEEK === AREA.nextWeek ? AREA.planNext : AREA.planCur;
+  let h = '<h2>האזור האישי של ' + esc(AREA.name) + '</h2><p class="lead">הודעות מההנהלה, צפי שעות שבועי וקישורים שימושיים.</p>';
+  if (AREA.needsPlan && !AREA.planNext.length) h += '<div class="alert">יש להגיש עד מוצאי שבת את צפי שעות העבודה לשבוע שמתחיל ב-' + dmy(AREA.nextWeek) + '.</div>';
+
+  h += '<div class="panel"><h2>הודעות</h2>';
+  h += AREA.messages.length ? AREA.messages.map(m =>
+    '<div class="msg' + (m.read ? '' : ' unread') + '"><div class="h"><b>' + esc(m.subject) + '</b><span class="sub">' + esc(dmy(m.sent)) + ' ' + esc((m.sent || '').slice(11)) + ' · ' + esc(m.from) + '</span></div>' +
+    '<div class="b">' + esc(m.body) + '</div>' + (m.read ? '' : '<div class="acts" style="margin-top:8px;justify-content:flex-start"><button class="btn" data-read="' + esc(m.id) + '">קראתי</button></div>') + '</div>').join('')
+    : '<div class="sub">אין הודעות כרגע.</div>';
+  h += '</div>';
+
+  if (AREA.needsPlan) {
+    const by = {}; plan.forEach(r => { by[r.day] = r; });
+    const submitted = plan.length ? plan[0].submitted : '';
+    h += '<div class="panel"><h2>צפי שעות עבודה</h2><p class="lead">מסמנים באילו ימים ובאילו שעות מתכננים לעבוד. מגישים כל שבוע עד מוצאי שבת.</p>' +
+      '<div class="toolbar"><div class="seg"><button data-wk="' + AREA.nextWeek + '" class="' + (PLAN_WEEK === AREA.nextWeek ? 'on' : '') + '">השבוע הבא (' + dmy(AREA.nextWeek) + ')</button>' +
+      '<button data-wk="' + AREA.curWeek + '" class="' + (PLAN_WEEK === AREA.curWeek ? 'on' : '') + '">השבוע הנוכחי</button></div>' +
+      (submitted ? '<span class="chip ok-chip">הוגש ' + esc(dmy(submitted)) + ' ' + esc(submitted.slice(11)) + '</span>' : '<span class="chip no-chip">עדיין לא הוגש</span>') + '</div>' +
+      '<table class="plan"><thead><tr><th>יום</th><th>עובד/ת?</th><th>משעה</th><th>עד שעה</th><th>הערה</th></tr></thead><tbody>' +
+      DAYS.map((d, i) => { const r = by[d]; const dt = addDays(PLAN_WEEK, i);
+        return '<tr><td><b>' + d + '</b><div class="sub">' + dmy(dt) + '</div></td><td><input type="checkbox" id="on' + i + '"' + (r ? ' checked' : '') + ' style="width:auto"></td>' +
+          '<td><input type="time" id="fr' + i + '" value="' + esc(r ? r.from : '') + '"></td><td><input type="time" id="to' + i + '" value="' + esc(r ? r.to : '') + '"></td>' +
+          '<td><input type="text" id="nt' + i + '" maxlength="100" value="' + esc(r ? r.note : '') + '" placeholder="לא חובה"></td></tr>'; }).join('') +
+      '</tbody></table><div class="foot" style="margin-top:12px"><button class="btn pri" id="savePlan">הגשת הצפי</button></div></div>';
+  }
+
+  h += '<div class="panel"><h2>קישורים</h2><div class="links">' +
+    '<a class="btn" target="_blank" href="' + APP_BASE + '?k=' + encodeURIComponent(TOKEN) + '">אפליקציית הנוכחות</a>' +
+    '<a class="btn" target="_blank" href="' + APP_BASE + 'training.html">מרכז ההדרכה – סרטונים</a></div></div>';
+  $('#main').innerHTML = h;
+
+  document.querySelectorAll('[data-read]').forEach(b => b.onclick = async () => {
+    b.disabled = true; try { await call('markRead', { id: b.dataset.read }); renderMe(); } catch (e) { toast(e.message, true); }
+  });
+  document.querySelectorAll('[data-wk]').forEach(b => b.onclick = () => { PLAN_WEEK = b.dataset.wk; renderMe(); });
+  document.querySelectorAll('[id^=fr],[id^=to]').forEach(inp => inp.oninput = () => { const i = inp.id.slice(2); $('#on' + i).checked = true; });
+  const sp = $('#savePlan'); if (sp) sp.onclick = async () => {
+    const days = DAYS.map((d, i) => ({ idx: i, on: $('#on' + i).checked, from: $('#fr' + i).value, to: $('#to' + i).value, note: $('#nt' + i).value }));
+    sp.disabled = true;
+    try { await call('savePlan', { week: PLAN_WEEK, days }); toast('הצפי הוגש. תודה!'); renderMe(); }
+    catch (e) { toast(e.message, true); sp.disabled = false; }
+  };
+}
+function addDays(ymd, n) { const p = ymd.split('-').map(Number); const d = new Date(p[0], p[1]-1, p[2]+n, 12); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
+
+/* ====================== צוות (מנהל) ====================== */
+let TEAM_WEEK = null;
+async function renderTeam(el) {
+  let t;
+  try { t = await call('teamArea', { week: TEAM_WEEK }); } catch (e) { el.innerHTML = '<div class="empty">' + esc(e.message) + '</div>'; return; }
+  TEAM_WEEK = t.week;
+  const workers = t.people.filter(p => p.needsPlan);
+  const rowsFor = id => t.plans.filter(r => r.emp === id && r.day !== '—');
+  el.innerHTML =
+    '<div class="panel"><h2>צפי שעות של הצוות</h2>' +
+    '<div class="toolbar"><div class="seg"><button data-tw="' + t.nextWeek + '" class="' + (t.week === t.nextWeek ? 'on' : '') + '">שבוע הבא (' + dmy(t.nextWeek) + ')</button>' +
+    '<button data-tw="' + t.curWeek + '" class="' + (t.week === t.curWeek ? 'on' : '') + '">השבוע הנוכחי</button></div></div>' +
+    '<table><thead><tr><th>עובד/ת</th><th>סטטוס</th><th>ימים ושעות</th></tr></thead><tbody>' +
+    workers.map(p => { const r = rowsFor(p.id); const any = t.plans.some(x => x.emp === p.id);
+      return '<tr><td><b>' + esc(p.name) + '</b><div class="sub">' + esc(p.role) + '</div></td><td>' + (any ? '<span class="chip ok-chip">הוגש</span>' : '<span class="chip no-chip">לא הוגש</span>') + '</td>' +
+        '<td class="note">' + (r.length ? r.map(x => esc(x.day) + ' ' + esc(x.from) + '–' + esc(x.to) + (x.note ? ' (' + esc(x.note) + ')' : '')).join(' · ') : (any ? 'לא מתוכננת עבודה' : '—')) + '</td></tr>'; }).join('') +
+    '</tbody></table></div>' +
+    '<div class="panel"><h2>שליחת הודעה לעובדים</h2><p class="lead">ההודעה מופיעה לעובד/ת ב"האזור שלי", עם סימון אדום עד שקוראים.</p>' +
+    '<div class="row2"><div><label for="m_to">אל</label><select id="m_to"><option value="כולם">כל הצוות</option>' + t.people.map(p => '<option value="' + esc(p.id) + '">' + esc(p.name) + '</option>').join('') + '</select></div>' +
+    '<div><label for="m_sub">נושא</label><input id="m_sub" maxlength="120"></div></div>' +
+    '<label for="m_body">תוכן</label><textarea id="m_body" maxlength="2000"></textarea>' +
+    '<div class="foot" style="margin-top:12px"><button class="btn pri" id="m_send">שליחה</button></div>' +
+    (t.messages.length ? '<h2 style="margin-top:18px">נשלחו לאחרונה</h2>' + t.messages.map(m => '<div class="sub">' + esc(dmy(m.sent)) + ' · ' + esc(m.subject) + ' · אל: ' + esc(m.to === 'כולם' ? 'כל הצוות' : (t.people.find(p => p.id === m.to) || {}).name || m.to) + ' · נקרא ע"י ' + m.readBy + '</div>').join('') : '') +
+    '</div>';
+  el.querySelectorAll('[data-tw]').forEach(b => b.onclick = () => { TEAM_WEEK = b.dataset.tw; renderTeam(el); });
+  $('#m_send').onclick = async () => {
+    const sub = $('#m_sub').value.trim(), body = $('#m_body').value.trim();
+    if (!sub || !body) return toast('יש למלא נושא ותוכן', true);
+    $('#m_send').disabled = true;
+    try { await call('sendMessage', { to: $('#m_to').value, subject: sub, body }); toast('ההודעה נשלחה'); renderTeam(el); }
+    catch (e) { toast(e.message, true); $('#m_send').disabled = false; }
+  };
+}
+
 async function start() {
   if (INVALID) { $('#main').innerHTML = '<div class="center">הקישור אינו תקף. יש לפתוח את הקישור האישי שקיבלת מהמנהל.</div>'; return; }
   try { ME = await call('me'); } catch (e) { $('#main').innerHTML = '<div class="center">' + esc(e.message) + '</div>'; return; }
-  COUNTS = ME.counts;
+  COUNTS = ME.counts; UNREAD = ME.unread || 0;
   $('#who').textContent = 'שלום, ' + ME.name;
   const tabs = TABS.filter(canSee);
   if (!tabs.length) { $('#main').innerHTML = '<div class="center">עדיין לא הוגדר לך תפקיד בפורטל. פנה/י ללאו.</div>'; return; }
   let saved = null; try { saved = localStorage.getItem('portal_view'); } catch (e) {}
-  go(tabs.some(t => t.id === saved) ? saved : tabs[0].id);
-  setInterval(() => { if (!BUSY && !$('#modal').classList.contains('on') && VIEW !== 'manage') reload(true); }, 60000);
+  const work = tabs.filter(t => t.id !== 'me');
+  go(UNREAD ? 'me' : (tabs.some(t => t.id === saved) ? saved : (work[0] || tabs[0]).id));
+  setInterval(() => { if (!BUSY && !$('#modal').classList.contains('on') && VIEW !== 'manage' && VIEW !== 'me') reload(true); }, 60000);
   try { window.top.postMessage({ nochejut: 'ready' }, '*'); } catch (e) {}
 }
 start();

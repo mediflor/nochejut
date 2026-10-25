@@ -50,8 +50,10 @@ function portalApi(token, op, payload) {
   const need = function (r) {
     if (roles.indexOf(r) < 0 && roles.indexOf(ROLE.MANAGER) < 0) throw new Error('אין הרשאה לפעולה זו.');
   };
+  const area = ptAreaApi_(emp, roles, op, payload);
+  if (area) return area;
   switch (op) {
-    case 'me': return { name: emp.name, roles: roles, types: PT_TYPES, counts: ptCounts_() };
+    case 'me': return { name: emp.name, roles: roles, types: PT_TYPES, counts: ptCounts_(), unread: ptMyArea_(emp).unread };
     case 'list': return ptList_(payload.view, roles);
     case 'callResult': need(ROLE.CALLER); return ptWrite_(emp, function () { return ptCallResult_(emp, payload); });
     case 'bookResult': need(ROLE.BOOKER); return ptWrite_(emp, function () { return ptBookResult_(emp, payload); });
@@ -400,3 +402,144 @@ function ptPhone_(v) {
 }
 function ptClean_(s) { return String(s || '').replace(/[<>]/g, '').trim().slice(0, 300); }
 function ptPub_(p) { const o = {}; Object.keys(p).forEach(function (k) { if (k !== 'row') o[k] = p[k]; }); return o; }
+
+/* ====================== אזור אישי: הודעות וצפי שעות שבועי ====================== */
+
+const PL_SHEET = 'צפי שעות';
+const PL_HEAD = ['שבוע (ראשון)', 'מזהה עובד', 'שם', 'יום', 'תאריך', 'משעה', 'עד שעה', 'הערה', 'הוגש'];
+const MSG_SHEET = 'הודעות לעובדים';
+const MSG_HEAD = ['מזהה', 'נשלח', 'מאת', 'אל (מזהה עובד / כולם)', 'נושא', 'תוכן', 'נקרא ע"י'];
+const PL_DAYS = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי'];
+
+function ptAreaApi_(emp, roles, op, p) {
+  const isMgr = roles.indexOf(ROLE.MANAGER) >= 0;
+  switch (op) {
+    case 'myArea': return ptMyArea_(emp);
+    case 'savePlan': return ptWrite_(emp, function () { return ptSavePlan_(emp, p); });
+    case 'markRead': return ptWrite_(emp, function () { return ptMarkRead_(emp, p.id); });
+    case 'sendMessage':
+      if (!isMgr) throw new Error('אין הרשאה לפעולה זו.');
+      return ptWrite_(emp, function () { return ptSendMessage_(emp, p); });
+    case 'teamArea':
+      if (!isMgr) throw new Error('אין הרשאה לפעולה זו.');
+      return ptTeamArea_(p.week);
+  }
+  return null;
+}
+
+/** ראשון של השבוע שמתחיל אחרי היום (במוצ"ש = מחר) */
+function ptNextSunday_() {
+  const d = new Date();
+  do { d.setDate(d.getDate() + 1); } while (Utilities.formatDate(d, 'Asia/Jerusalem', 'u') !== '7');
+  return ptFmt_(d);
+}
+function ptThisSunday_() {
+  const d = new Date();
+  while (Utilities.formatDate(d, 'Asia/Jerusalem', 'u') !== '7') d.setDate(d.getDate() - 1);
+  return ptFmt_(d);
+}
+function ptAddDays_(ymd, n) {
+  const p = ymd.split('-').map(Number);
+  const d = new Date(p[0], p[1] - 1, p[2], 12);
+  d.setDate(d.getDate() + n);
+  return ptFmt_(d);
+}
+
+function ptPlanRows_() {
+  const v = ptSheet_(PL_SHEET, PL_HEAD).getDataRange().getValues();
+  const out = [];
+  for (let i = 1; i < v.length; i++) {
+    if (!v[i][1]) continue;
+    out.push({ row: i + 1, week: ptDate_(v[i][0]), emp: String(v[i][1]), name: String(v[i][2]), day: String(v[i][3]),
+      date: ptDate_(v[i][4]), from: ptTime_(v[i][5]), to: ptTime_(v[i][6]), note: String(v[i][7] || ''), submitted: ptStr_(v[i][8]) });
+  }
+  return out;
+}
+
+function ptPlanFor_(empId, week) {
+  return ptPlanRows_().filter(function (r) { return r.emp === empId && r.week === week; })
+    .map(function (r) { const o = ptPub_(r); return o; });
+}
+
+function ptMyArea_(emp) {
+  const next = ptNextSunday_(), cur = ptThisSunday_();
+  const msgs = ptMessages_().filter(function (m) { return m.to === 'כולם' || m.to === emp.id; })
+    .map(function (m) { return { id: m.id, sent: m.sent, from: m.from, subject: m.subject, body: m.body, read: m.readBy.indexOf(emp.id) >= 0 }; })
+    .reverse().slice(0, 30);
+  return {
+    name: emp.name, nextWeek: next, curWeek: cur,
+    planNext: ptPlanFor_(emp.id, next), planCur: ptPlanFor_(emp.id, cur),
+    needsPlan: !emp.admin && !emp.contractor,
+    messages: msgs, unread: msgs.filter(function (m) { return !m.read; }).length
+  };
+}
+
+function ptSavePlan_(emp, p) {
+  const week = String(p.week || '');
+  if ([ptNextSunday_(), ptThisSunday_()].indexOf(week) < 0) throw new Error('אפשר להגיש צפי רק לשבוע הנוכחי או לשבוע הבא.');
+  const days = (p.days || []).filter(function (d) { return d && d.on; });
+  const rows = [];
+  days.forEach(function (d) {
+    const idx = Number(d.idx);
+    if (!(idx >= 0 && idx < PL_DAYS.length)) return;
+    if (!/^\d{2}:\d{2}$/.test(d.from || '') || !/^\d{2}:\d{2}$/.test(d.to || '')) throw new Error('יש למלא שעת התחלה וסיום ליום ' + PL_DAYS[idx] + '.');
+    if (d.to <= d.from) throw new Error('שעת הסיום ביום ' + PL_DAYS[idx] + ' צריכה להיות אחרי שעת ההתחלה.');
+    rows.push([week, emp.id, emp.name, PL_DAYS[idx], ptAddDays_(week, idx), "'" + d.from, "'" + d.to, ptClean_(d.note), ptNow_()]);
+  });
+  const sh = ptSheet_(PL_SHEET, PL_HEAD);
+  const old = ptPlanRows_().filter(function (r) { return r.emp === emp.id && r.week === week; })
+    .map(function (r) { return r.row; }).sort(function (a, b) { return b - a; });
+  old.forEach(function (r) { sh.deleteRow(r); });
+  if (!rows.length) rows.push([week, emp.id, emp.name, '—', '', '', '', 'לא מתוכננת עבודה השבוע', ptNow_()]);
+  sh.getRange(sh.getLastRow() + 1, 1, rows.length, PL_HEAD.length).setValues(rows);
+  ptLog_(emp, '', 'הוגש צפי שעות', 'שבוע ' + week + ': ' + days.length + ' ימים');
+  return { ok: true };
+}
+
+function ptMessages_() {
+  const v = ptSheet_(MSG_SHEET, MSG_HEAD).getDataRange().getValues();
+  const out = [];
+  for (let i = 1; i < v.length; i++) {
+    if (!v[i][0]) continue;
+    out.push({ row: i + 1, id: String(v[i][0]), sent: ptStr_(v[i][1]), from: String(v[i][2]), to: String(v[i][3]),
+      subject: String(v[i][4] || ''), body: String(v[i][5] || ''), readBy: String(v[i][6] || '').split(',').filter(Boolean) });
+  }
+  return out;
+}
+
+function ptMarkRead_(emp, id) {
+  const m = ptMessages_().filter(function (x) { return x.id === String(id); })[0];
+  if (!m || (m.to !== 'כולם' && m.to !== emp.id)) throw new Error('ההודעה לא נמצאה.');
+  if (m.readBy.indexOf(emp.id) < 0) {
+    m.readBy.push(emp.id);
+    ptSheet_(MSG_SHEET, MSG_HEAD).getRange(m.row, 7).setValue(m.readBy.join(','));
+  }
+  return { ok: true };
+}
+
+function ptSendMessage_(emp, p) {
+  const subject = ptClean_(p.subject), body = String(p.body || '').replace(/[<>]/g, '').trim().slice(0, 2000);
+  if (!subject || !body) throw new Error('יש למלא נושא ותוכן.');
+  const to = p.to === 'כולם' ? 'כולם' : String(p.to || '');
+  if (to !== 'כולם' && !readEmps_().some(function (x) { return x.id === to && x.active; })) throw new Error('עובד לא נמצא.');
+  const sh = ptSheet_(MSG_SHEET, MSG_HEAD);
+  const id = 'M-' + Utilities.formatDate(new Date(), 'Asia/Jerusalem', 'yyMMddHHmmss');
+  sh.appendRow([id, ptNow_(), emp.name, to, subject, body, '']);
+  return { ok: true, id: id };
+}
+
+function ptTeamArea_(week) {
+  const next = ptNextSunday_(), cur = ptThisSunday_();
+  week = [next, cur].indexOf(week) >= 0 ? week : next;
+  const emps = readEmps_().filter(function (e) { return e.active && !/בדיקה/.test(e.name); });
+  const plans = ptPlanRows_().filter(function (r) { return r.week === week; });
+  const msgs = ptMessages_();
+  return {
+    week: week, nextWeek: next, curWeek: cur,
+    people: emps.map(function (e) { return { id: e.id, name: e.name, role: e.role, needsPlan: !e.admin && !e.contractor }; }),
+    plans: plans.map(ptPub_),
+    messages: msgs.slice(-20).reverse().map(function (m) {
+      return { id: m.id, sent: m.sent, to: m.to, subject: m.subject, readBy: m.readBy.length };
+    })
+  };
+}
