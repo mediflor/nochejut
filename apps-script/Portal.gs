@@ -12,10 +12,10 @@ const PT_ROLES = 'תפקידי פורטל';
 const PT_HEAD = ['מזהה פנימי', 'נוצר', 'שם מטופל', 'טלפון', 'סוג פנייה', 'סטטוס', 'זמין מתאריך',
   'ניסיונות שיחה', 'תוצאת שיחה', 'הסבר (ללא מידע רפואי)', 'שיחה אחרונה', 'ניסיונות קביעה',
   'תאריך תור', 'שעת תור', 'הערת מזכירה', 'החלטת רופאה', 'הנחיה', 'הגעה', 'ביקר ברבעון',
-  'עודכן', 'עודכן ע"י', 'רשימה'];
+  'עודכן', 'עודכן ע"י', 'רשימה', 'ת.ז. מטופל'];
 const PC = { ID: 0, CREATED: 1, NAME: 2, PHONE: 3, TYPE: 4, STATUS: 5, AVAIL: 6, CALLS: 7, CALLRES: 8,
   NOTE: 9, LASTCALL: 10, BOOKTRIES: 11, APPTDATE: 12, APPTTIME: 13, BOOKNOTE: 14, DOCDEC: 15,
-  INSTR: 16, ARRIVAL: 17, VISITED: 18, UPDATED: 19, UPDBY: 20, LIST: 21 };
+  INSTR: 16, ARRIVAL: 17, VISITED: 18, UPDATED: 19, UPDBY: 20, LIST: 21, TZ: 22 };
 
 const ST = { CALL: 'לשיחה', BOOK: 'לקביעת תור', DOC: 'להחלטת רופאה', BOOKED: 'תור נקבע',
   DONE: 'הושלם', NOSHOW: 'לא הגיע', CLOSED: 'סגור' };
@@ -109,7 +109,7 @@ function ptObj_(r, row) {
     apptDate: ptDate_(r[PC.APPTDATE]), apptTime: ptTime_(r[PC.APPTTIME]), bookNote: String(r[PC.BOOKNOTE] || ''),
     docDec: String(r[PC.DOCDEC] || ''), instr: String(r[PC.INSTR] || ''), arrival: String(r[PC.ARRIVAL] || ''),
     visited: String(r[PC.VISITED] || '') === 'כן', updated: ptStr_(r[PC.UPDATED]), updBy: String(r[PC.UPDBY] || ''),
-    list: String(r[PC.LIST] || '')
+    list: String(r[PC.LIST] || ''), tz: String(r[PC.TZ] || '').replace(/\D/g, '')
   };
 }
 
@@ -317,8 +317,12 @@ function ptImport_(emp, p) {
   const lines = String(p.text || '').split(/\r?\n/);
   const sh = ptSheet_(PT_SHEET, PT_HEAD);
   const existing = ptRows_();
+  // כותרת העמודה החדשה (ת.ז.) בגיליון קיים
+  if (sh.getLastColumn() < PT_HEAD.length) sh.getRange(1, PT_HEAD.length).setValue(PT_HEAD[PT_HEAD.length - 1]).setFontWeight('bold').setBackground('#fbe3e5');
   const phones = {};
-  existing.forEach(function (x) { if (x.status !== ST.CLOSED && x.status !== ST.DONE) phones[x.phone] = true; });
+  existing.forEach(function (x) {
+    if (x.status !== ST.CLOSED && x.status !== ST.DONE) { if (x.phone) phones[x.phone] = true; if (x.tz) phones['tz' + x.tz] = true; }
+  });
   let seq = existing.reduce(function (m, x) { const n = Number(String(x.id).replace(/\D/g, '')); return n > m ? n : m; }, 0);
   const now = ptNow_();
   const rows = [];
@@ -326,21 +330,33 @@ function ptImport_(emp, p) {
   lines.forEach(function (line, i) {
     line = line.trim();
     if (!line) return;
-    const parts = line.split(/\t|,|;/).map(function (s) { return s.trim(); }).filter(Boolean);
-    if (parts.length < 2) { skipped.push((i + 1) + ': חסר טלפון'); return; }
-    let name = parts[0], phone = parts[1];
-    if (/\d{7,}/.test(name.replace(/\D/g, '')) && !/\d/.test(phone)) { const t = name; name = phone; phone = t; }
-    phone = phone.replace(/[^\d+]/g, '');
-    if (phone.length < 9) { skipped.push((i + 1) + ': טלפון לא תקין'); return; }
-    if (phones[phone]) { skipped.push((i + 1) + ': כבר קיים ברשימה פעילה'); return; }
-    phones[phone] = true;
-    const rowType = PT_TYPES.indexOf(parts[2]) >= 0 ? parts[2] : type;
+    // שורה: שם + טלפון ו/או ת.ז. (9 ספרות, לא מתחיל ב-0) + סוג פנייה – בכל סדר, מופרד בפסיק/טאב/מקף
+    line = line.replace(/^[-–•\s]+/, '');
+    const parts = line.split(/\t|,|;|\s+[-–]\s+/).map(function (s) { return s.trim(); }).filter(Boolean);
+    let name = '', phone = '', tz = '', rowType = type;
+    parts.forEach(function (s) {
+      const d = s.replace(/[^\d]/g, '');
+      if (PT_TYPES.indexOf(s) >= 0) rowType = s;
+      else if (/^[\d\s\-+()]+$/.test(s) && d.length === 9 && d[0] !== '0' && !tz) tz = d;
+      else if (/^[\d\s\-+()]+$/.test(s) && d.length >= 9) phone = s.replace(/[^\d+]/g, '');
+      else if (!name) {
+        // "שם 123456789" באותו חלק
+        const m = s.match(/^(.*?)\s+(\d{9})$/);
+        if (m && m[2][0] !== '0') { name = m[1]; tz = m[2]; } else name = s;
+      }
+    });
+    if (!name) { skipped.push((i + 1) + ': חסר שם'); return; }
+    if (!phone && !tz) { skipped.push((i + 1) + ': חסר טלפון או ת.ז.'); return; }
+    if ((phone && phones[phone]) || (tz && phones['tz' + tz])) { skipped.push((i + 1) + ': כבר קיים ברשימה פעילה'); return; }
+    if (phone) phones[phone] = true;
+    if (tz) phones['tz' + tz] = true;
     seq++;
     const r = new Array(PT_HEAD.length).fill('');
     r[PC.ID] = 'P-' + ('00000' + seq).slice(-5);
     r[PC.CREATED] = now;
     r[PC.NAME] = ptClean_(name).slice(0, 80);
-    r[PC.PHONE] = "'" + phone;
+    r[PC.PHONE] = phone ? "'" + phone : '';
+    r[PC.TZ] = tz ? "'" + tz : '';
     r[PC.TYPE] = rowType;
     r[PC.STATUS] = ST.CALL;
     r[PC.CALLS] = 0;

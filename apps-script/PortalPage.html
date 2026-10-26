@@ -158,9 +158,10 @@ async function reload(silent) {
 
 const RULE = '<div class="rule">אין לכתוב במערכת שום מידע רפואי: לא אבחנה, לא סיבה רפואית ולא רקע. רק פרטים תפעוליים.</div>';
 function visitChip(p) { return p.visited ? '<span class="chip rep">ביקר ברבעון</span>' : '<span class="chip new">חדש ברבעון</span>'; }
-function phone(p) { return '<a class="phone" href="tel:' + esc(p.phone) + '">' + esc(p.phone) + '</a>'; }
+function phone(p) { return p.phone ? '<a class="phone" href="tel:' + esc(p.phone) + '">' + esc(p.phone) + '</a>' : '<span class="sub">לפי התיק במכבי</span>'; }
 function who(p) {
-  return '<div class="name">' + esc(p.name) + '</div><div class="sub">' + esc(p.id) + ' · ' + esc(p.type) + '</div>' +
+  return '<div class="name">' + esc(p.name) + '</div><div class="sub">' + esc(p.id) + ' · ' + esc(p.type) +
+    (p.tz ? ' · ת.ז. <span class="phone" style="color:inherit">' + esc(p.tz) + '</span>' : '') + '</div>' +
     (p.instr ? '<div class="instr">הנחיית רופאה: ' + esc(p.instr) + '</div>' : '');
 }
 
@@ -175,7 +176,7 @@ function render() {
   }[VIEW];
   let h = '<h2>' + head[0] + '</h2><p class="lead">' + head[1] + '</p>';
   if (VIEW === 'calls' || VIEW === 'doctor' || VIEW === 'book') h += RULE;
-  if (VIEW === 'all') h += '<div class="toolbar"><input id="q" placeholder="חיפוש לפי שם, טלפון או מזהה"></div>';
+  if (VIEW === 'all') h += '<div class="toolbar"><input id="q" placeholder="חיפוש לפי שם, טלפון, ת.ז. או מזהה"></div>';
   if (!ROWS.length) { $('#main').innerHTML = h + '<div class="empty">אין כרגע פניות ברשימה הזו 🌸</div>'; return; }
   h += '<table><thead><tr>' + cols().map(c => '<th>' + c + '</th>').join('') + '</tr></thead><tbody id="tb">' + ROWS.map(row).join('') + '</tbody></table>';
   $('#main').innerHTML = h;
@@ -324,10 +325,10 @@ async function renderManage() {
     '<div class="cards">' + card(s.total, 'פניות במערכת') + card(s.counts.calls, 'ממתינות לשיחה') + card(s.counts.book, 'ממתינות לקביעת תור') +
       card(s.counts.doctor, 'ממתינות לד"ר פלור') + card(s.booked, 'תורים שנקבעו') + card(s.newInQuarter, 'תורים למטופלים חדשים ברבעון') +
       card(s.responseRate + '%', 'היענות בשיחות') + card(s.arrivalRate + '%', 'הגעה לתורים') + '</div>' +
-    '<div class="panel"><h2>ייבוא רשימה</h2><p class="lead">מדביקים שורה לכל מטופל: <b>שם, טלפון</b> (אפשר להעתיק שתי עמודות מאקסל). כל מטופל מקבל מזהה פנימי. מספר שכבר קיים ברשימה פעילה מדולג.</p>' +
+    '<div class="panel"><h2>ייבוא רשימה</h2><p class="lead">מדביקים שורה לכל מטופל: <b>שם, טלפון ו/או ת.ז.</b> (אפשר להעתיק עמודות מאקסל). כל מטופל מקבל מזהה פנימי. מטופל שכבר קיים ברשימה פעילה מדולג.</p>' +
       '<div class="row2"><div><label for="imp_type">סוג פנייה</label><select id="imp_type">' + ME.types.map(t => '<option' + (t === 'ביקור' ? ' selected' : '') + '>' + t + '</option>').join('') + '</select></div>' +
       '<div><label for="imp_list">שם הרשימה</label><input id="imp_list" placeholder="למשל: חיסוני שפעת – נובמבר"></div></div>' +
-      '<label for="imp_text">שם, טלפון – שורה לכל מטופל</label><textarea id="imp_text" style="min-height:160px" placeholder="ישראל ישראלי, 0501234567"></textarea>' +
+      '<label for="imp_text">שם, טלפון ו/או ת.ז. – שורה לכל מטופל</label><textarea id="imp_text" style="min-height:160px" placeholder="ישראל ישראלי, 0501234567, 123456782"></textarea>' +
       '<div class="foot" style="margin-top:12px"><button class="btn pri" id="imp_go">ייבוא</button></div><div id="imp_res" class="sub" style="margin-top:8px"></div></div>' +
     '<div id="team"><div class="center" style="min-height:120px">טוען צוות…</div></div>';
   renderTeam($('#team'));
