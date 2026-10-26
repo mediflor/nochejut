@@ -176,11 +176,12 @@ function render() {
   }[VIEW];
   let h = '<h2>' + head[0] + '</h2><p class="lead">' + head[1] + '</p>';
   if (VIEW === 'calls' || VIEW === 'doctor' || VIEW === 'book') h += RULE;
+  if (VIEW === 'calls') h += '<div class="toolbar"><button class="btn pri" id="addPt">➕ הוספת מטופל</button></div>';
   if (VIEW === 'all') h += '<div class="toolbar"><input id="q" placeholder="חיפוש לפי שם, טלפון, ת.ז. או מזהה"></div>';
-  if (!ROWS.length) { $('#main').innerHTML = h + '<div class="empty">אין כרגע פניות ברשימה הזו 🌸</div>'; return; }
+  if (!ROWS.length) { $('#main').innerHTML = h + '<div class="empty">אין כרגע פניות ברשימה הזו 🌸</div>'; bindAdd(); return; }
   h += '<table><thead><tr>' + cols().map(c => '<th>' + c + '</th>').join('') + '</tr></thead><tbody id="tb">' + ROWS.map(row).join('') + '</tbody></table>';
   $('#main').innerHTML = h;
-  bindRows();
+  bindRows(); bindAdd();
   if (VIEW === 'all') $('#q').oninput = e => {
     const q = e.target.value.trim();
     document.querySelectorAll('#tb tr').forEach(tr => tr.style.display = !q || tr.textContent.indexOf(q) >= 0 ? '' : 'none');
@@ -247,6 +248,29 @@ function bindRows() {
 }
 
 function find(id) { return ROWS.filter(r => r.id === id)[0]; }
+
+// ת.ז. ישראלית – ספרת ביקורת
+function tzOk(tz) {
+  tz = String(tz || '').replace(/\D/g, '');
+  if (tz.length < 5 || tz.length > 9) return false;
+  tz = tz.padStart(9, '0'); let s = 0;
+  for (let i = 0; i < 9; i++) { let d = +tz[i] * ((i % 2) + 1); s += d > 9 ? d - 9 : d; }
+  return s % 10 === 0;
+}
+function bindAdd() {
+  const b = $('#addPt'); if (!b) return;
+  b.onclick = () => modal('הוספת מטופל', { name: 'מטופל שדיברת איתו או שצריך להתקשר אליו', id: 'נשמר בפורטל בלבד' }, [
+      { k:'name', l:'שם מלא', t:'text', req:true },
+      { k:'tz', l:'ת.ז. (9 ספרות)', t:'text', req:true },
+      { k:'phone', l:'טלפון (לא חובה)', t:'tel' },
+      { k:'type', l:'סוג פנייה', t:'select', o: ME.types.filter(t => t !== 'חידוש מרשם').map(t => [t, t]) },
+      { k:'mode', l:'מה הסטטוס?', t:'select', o:[['interested','דיברתי – מעוניין, להעביר לרחלי'],['hasappt','כבר יש לו תור – לבצע כשמגיע'],['tocall','עוד לא דיברתי – להוסיף לשיחות']] },
+      { k:'note', l:'הערה לרחלי (לא חובה) – ללא מידע רפואי', t:'text' }],
+    v => {
+      if (!tzOk(v.tz)) { toast('מספר ת.ז. לא תקין – בדקו את הספרות', true); return; }
+      send('addPatient', v, v.mode === 'tocall' ? 'נוסף לרשימת השיחות' : 'הועבר לרחלי לקביעת תור');
+    });
+}
 
 function act(a, id) {
   const p = find(id); if (!p) return;

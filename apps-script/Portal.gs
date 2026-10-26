@@ -60,6 +60,7 @@ function portalApi(token, op, payload) {
     case 'arrival': need(ROLE.BOOKER); return ptWrite_(emp, function () { return ptArrival_(emp, payload); });
     case 'visited': return ptWrite_(emp, function () { return ptVisited_(emp, payload); });
     case 'doctorDecision': need(ROLE.DOCTOR); return ptWrite_(emp, function () { return ptDoctor_(emp, payload); });
+    case 'addPatient': need(ROLE.CALLER); return ptWrite_(emp, function () { return ptAdd_(emp, payload); });
     case 'importList': need(ROLE.MANAGER); return ptWrite_(emp, function () { return ptImport_(emp, payload); });
     case 'stats': need(ROLE.MANAGER); return ptStats_();
   }
@@ -369,6 +370,57 @@ function ptImport_(emp, p) {
   if (rows.length) sh.getRange(sh.getLastRow() + 1, 1, rows.length, PT_HEAD.length).setValues(rows);
   ptLog_(emp, '', 'ייבוא רשימה', listName + ': ' + rows.length + ' נוספו, ' + skipped.length + ' דולגו');
   return { added: rows.length, skipped: skipped };
+}
+
+/** בדיקת ספרת ביקורת של ת.ז. ישראלית */
+function ptTzValid_(tz) {
+  tz = String(tz || '').replace(/\D/g, '');
+  if (tz.length < 5 || tz.length > 9) return false;
+  tz = ('000000000' + tz).slice(-9);
+  let s = 0;
+  for (let i = 0; i < 9; i++) { let d = Number(tz[i]) * ((i % 2) + 1); s += d > 9 ? d - 9 : d; }
+  return s % 10 === 0;
+}
+
+/** עמית מוסיף מטופל שכבר דיבר איתו (או שצריך להתקשר אליו) – עם ת.ז., בלי חובת טלפון */
+function ptAdd_(emp, p) {
+  const name = ptClean_(p.name).slice(0, 80);
+  const tzRaw = String(p.tz || '').replace(/\D/g, '');
+  const phone = String(p.phone || '').replace(/[^\d+]/g, '');
+  const type = PT_TYPES.indexOf(p.type) >= 0 ? p.type : PT_TYPES[0];
+  const mode = ['interested', 'tocall', 'hasappt'].indexOf(p.mode) >= 0 ? p.mode : 'interested';
+  if (!name) throw new Error('חסר שם מטופל.');
+  if (!ptTzValid_(tzRaw)) throw new Error('מספר ת.ז. לא תקין. בדקו שוב את הספרות.');
+  if (phone && phone.length < 9) throw new Error('מספר הטלפון לא תקין.');
+  const tz = ('000000000' + tzRaw).slice(-9);
+  const sh = ptSheet_(PT_SHEET, PT_HEAD);
+  if (sh.getLastColumn() < PT_HEAD.length) sh.getRange(1, PT_HEAD.length).setValue(PT_HEAD[PT_HEAD.length - 1]).setFontWeight('bold').setBackground('#fbe3e5');
+  const existing = ptRows_();
+  const dup = existing.filter(function (x) { return x.tz === tz && x.status !== ST.CLOSED && x.status !== ST.DONE; })[0];
+  if (dup) throw new Error('המטופל כבר קיים ברשימה פעילה (' + dup.id + ', ' + dup.status + ').');
+  const seq = existing.reduce(function (m, x) { const n = Number(String(x.id).replace(/\D/g, '')); return n > m ? n : m; }, 0) + 1;
+  const now = ptNow_();
+  const note = ptClean_(p.note).slice(0, 300);
+  const r = new Array(PT_HEAD.length).fill('');
+  r[PC.ID] = 'P-' + ('00000' + seq).slice(-5);
+  r[PC.CREATED] = now;
+  r[PC.NAME] = name;
+  r[PC.PHONE] = phone ? "'" + phone : '';
+  r[PC.TZ] = "'" + tz;
+  r[PC.TYPE] = type;
+  r[PC.BOOKTRIES] = 0;
+  if (mode === 'tocall') {
+    r[PC.STATUS] = ST.CALL; r[PC.CALLS] = 0; r[PC.NOTE] = note;
+  } else {
+    r[PC.STATUS] = ST.BOOK; r[PC.CALLS] = 1; r[PC.CALLRES] = 'מעוניין'; r[PC.LASTCALL] = now;
+    r[PC.NOTE] = mode === 'hasappt' ? ('כבר יש לו תור – לבצע בהגעה. רחלי: להזין את מועד התור ולסמן "תור נקבע".' + (note ? ' ' + note : '')) : note;
+  }
+  r[PC.UPDATED] = now;
+  r[PC.UPDBY] = emp.name;
+  r[PC.LIST] = 'נוסף ע"י ' + emp.name;
+  sh.getRange(sh.getLastRow() + 1, 1, 1, PT_HEAD.length).setValues([r]);
+  ptLog_(emp, r[PC.ID], 'הוספת מטופל', mode);
+  return { id: r[PC.ID] };
 }
 
 /* ====================== עזר ====================== */
